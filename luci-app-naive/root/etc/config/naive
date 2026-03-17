@@ -1,0 +1,12 @@
+config naive
+ option enabled '0'
+ option binary_path '/usr/bin/naive'
+ option listen_type 'socks'
+ option listen_addr '127.0.0.1'
+ option listen_port '1080'
+ option proxy_protocol 'https'
+ option server 'example.com'
+ option server_port '443'
+ option username ''
+ option password ''
+ option extra_args ''
