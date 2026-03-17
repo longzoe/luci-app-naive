@@ -44,6 +44,8 @@ build_config() {
   json_add_string listen "${listen_type}://${listen_addr}:${listen_port}"
   json_add_string proxy "${proxy_protocol}://${username}:${password}@${server}:${server_port}"
   json_dump > "$CFGFILE"
+
+  logger -t naive "generated runtime config: $CFGFILE"
 }
 
 append_extra_args() {
@@ -72,6 +74,7 @@ start_instance() {
   }
 
   build_config "$cfg" || return 1
+  logger -t naive "starting binary: $prog"
 
   procd_open_instance
   procd_set_param command "$prog" "$CFGFILE"

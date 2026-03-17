@@ -8,7 +8,7 @@ function index()
   end
 
   entry({"admin", "services", "naive"}, cbi("naive/config"), "Naive 代理", 60).dependent = true
-  entry({"admin", "services", "naive", "log"}, call("action_log"), "日志", 61).leaf = true
+  entry({"admin", "services", "naive", "log"}, call("action_log")).leaf = true
 end
 
 function action_log()

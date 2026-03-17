@@ -52,15 +52,119 @@ function binary.cfgvalue()
   )
 end
 
-local logs = s:option(DummyValue, "_logs", "最近日志")
-logs.rawhtml = true
+local log_view = s:option(DummyValue, "_log_view", "实时日志")
+log_view.rawhtml = true
 
-function logs.cfgvalue()
-  return string.format(
-    "<a class=\"btn cbi-button cbi-button-action\" href=\"%s\" target=\"_blank\" rel=\"noreferrer\">%s</a>",
-    dispatcher.build_url("admin", "services", "naive", "log"),
-    "打开日志"
-  )
+function log_view.cfgvalue()
+  local log_url = dispatcher.build_url("admin", "services", "naive", "log")
+
+  return string.format([[
+<div class="naive-log-panel">
+  <div style="margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    <button class="btn cbi-button cbi-button-action" type="button" id="naive-log-refresh">立即刷新</button>
+    <button class="btn cbi-button" type="button" id="naive-log-toggle">暂停刷新</button>
+    <button class="btn cbi-button cbi-button-reset" type="button" id="naive-log-clear">清屏</button>
+    <label style="display:inline-flex; gap:6px; align-items:center;">
+      <input type="checkbox" id="naive-log-autorefresh" checked="checked" />
+      <span>自动刷新</span>
+    </label>
+    <span id="naive-log-status" style="color:#666;">准备就绪</span>
+  </div>
+  <textarea id="naive-log-output" readonly="readonly" wrap="off" style="width:100%%; min-height:320px; font-family:monospace; white-space:pre; overflow:auto;"></textarea>
+</div>
+<script type="text/javascript">
+(function() {
+  var logUrl = %q;
+  var output = document.getElementById('naive-log-output');
+  var status = document.getElementById('naive-log-status');
+  var refreshButton = document.getElementById('naive-log-refresh');
+  var toggleButton = document.getElementById('naive-log-toggle');
+  var clearButton = document.getElementById('naive-log-clear');
+  var autoRefresh = document.getElementById('naive-log-autorefresh');
+  var paused = false;
+  var timer = null;
+  var intervalMs = 3000;
+
+  function setStatus(message) {
+    status.textContent = message;
+  }
+
+  function schedule() {
+    if (timer) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+
+    if (!paused && autoRefresh.checked) {
+      timer = window.setTimeout(fetchLogs, intervalMs);
+    }
+  }
+
+  function fetchLogs() {
+    if (paused) {
+      setStatus('已暂停');
+      schedule();
+      return;
+    }
+
+    setStatus('正在刷新...');
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', logUrl, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) {
+        return;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        output.value = xhr.responseText || '暂无日志';
+        output.scrollTop = output.scrollHeight;
+        setStatus(autoRefresh.checked ? '自动刷新中' : '已刷新');
+      } else {
+        setStatus('日志读取失败');
+      }
+
+      schedule();
+    };
+    xhr.send(null);
+  }
+
+  refreshButton.addEventListener('click', function() {
+    fetchLogs();
+  });
+
+  toggleButton.addEventListener('click', function() {
+    paused = !paused;
+    toggleButton.textContent = paused ? '继续刷新' : '暂停刷新';
+    setStatus(paused ? '已暂停' : '自动刷新中');
+    schedule();
+
+    if (!paused) {
+      fetchLogs();
+    }
+  });
+
+  clearButton.addEventListener('click', function() {
+    output.value = '';
+    setStatus(paused ? '已暂停，日志已清屏' : '日志已清屏');
+  });
+
+  autoRefresh.addEventListener('change', function() {
+    if (!autoRefresh.checked) {
+      setStatus(paused ? '已暂停' : '自动刷新已关闭');
+      schedule();
+      return;
+    }
+
+    if (!paused) {
+      fetchLogs();
+    }
+  });
+
+  fetchLogs();
+})();
+</script>
+]], log_url)
 end
 
 local start = s:option(Button, "_start", "启动服务")
